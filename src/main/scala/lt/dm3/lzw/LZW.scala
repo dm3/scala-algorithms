@@ -1,3 +1,5 @@
+package lt.dm3.lzw
+
 import scala.collection._
 
 /**
@@ -53,12 +55,12 @@ class LZWEncoder(val initial: String) {
   def encode = {
     var word = ""
     initial.foreach(char => {
-      val chars = word + char.toString
+      val chars = word + char
       if (table contains chars) word = chars
       else {
-        val index = table.size + 1
-        table += (word -> index)
-        output += index.toChar
+        table += (chars -> table.size)
+        word = char.toString
+        output append (table.size - 1)
       }
     })
     output
