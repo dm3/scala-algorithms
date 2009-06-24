@@ -1,4 +1,6 @@
-object 99problems {
+package lt.dm3.exercise
+
+object lists99 {
   //Find the last element of a list.
   //scala> last(List(1, 1, 2, 3, 5, 8))
   //res0: Int = 8
@@ -42,7 +44,7 @@ object 99problems {
   // If a list contains repeated elements they should be replaced with a single copy of the element. The order of the elements should not be changed.
   // scala> compress(List('a, 'a, 'a, 'a, 'b, 'c, 'c, 'a, 'a, 'd, 'e, 'e, 'e, 'e))
   // res0: List[Symbol] = List('a, 'b, 'c, 'a, 'd, 'e)
-  import scala.collections._
+  import scala.collection._
   def compressAll[T](xs: List[T]): List[T] = {
     //maintain order
     val buf = new mutable.LinkedHashSet[T]
@@ -197,18 +199,6 @@ object 99problems {
   // res0: List[Symbol] = List('b, 'a, 'd, 'c, 'e, 'f)
   def randomPermute[T](xs: List[T]) = randomSelect(xs.length, xs)
 
-  //   Generate the combinations of K distinct objects chosen from the N elements of a
-  // list.
-  // In how many ways can a committee of 3 be chosen from a group of 12 people?
-  // We all know that there are C(12,3) = 220 possibilities (C(N,K) denotes the
-  //   well-known binomial coefficient). For pure mathematicians, this result may
-  // be great. But we want to really generate all the possibilities.
-  // scala> combinations(3, List('a, 'b, 'c, 'd, 'e, 'f))
-  // res0: List[List[Symbol]] = List(List('a, 'b, 'c), List('a, 'b, 'd), List('a, 'b, 'e), ...
-  def combinations[T](n: Int, list: List[T]): List[List[T]] = {
-    if (n == 0) List(Nil) else list.flatMapSublists((ls) => combinations(n - 1, ls.tail).map(x => ls.head :: x))
-  }
-
   class ExtraRichList[T](list: List[T]) {
     //same as flatMap, but passes successive sublists instead of elements
     //List(1, 2, 3).flatMapSubList will produce List(1, 2, 3,   2, 3,   3)
@@ -229,6 +219,19 @@ object 99problems {
     }
   }
   implicit def list2extraRichList[T](list: List[T]) = new ExtraRichList(list)
+  
+  //   Generate the combinations of K distinct objects chosen from the N elements of a
+  // list.
+  // In how many ways can a committee of 3 be chosen from a group of 12 people?
+  // We all know that there are C(12,3) = 220 possibilities (C(N,K) denotes the
+  //   well-known binomial coefficient). For pure mathematicians, this result may
+  // be great. But we want to really generate all the possibilities.
+  // scala> combinations(3, List('a, 'b, 'c, 'd, 'e, 'f))
+  // res0: List[List[Symbol]] = List(List('a, 'b, 'c), List('a, 'b, 'd), List('a, 'b, 'e), ...
+  def combinations[T](n: Int, list: List[T]): List[List[T]] = {
+    if (n == 0) List(Nil) else list.flatMapSublists((ls) => combinations(n - 1, ls.tail).map(x => ls.head :: x))
+  }
+
 
 // (**) Group the elements of a set into disjoint subsets.
 //     a) In how many ways can a group of 9 people work in 3 disjoint subgroups of
@@ -247,16 +250,61 @@ object 99problems {
 //     (Aldo, Beat), ...).
 //     You may find more about this combinatorial problem in a good book on
 //     discrete mathematics under the term "multinomial coefficients".
-  def group[T](groups: List[Int], list: List[T]): List[List[List[T]]] = {
-    def loop(_groups: List[Int], _list: List[T]) = _groups match {
-      case Nil => Nil
-      case x :: xs => groups(xs, combinations(x, list))
-    }
+  def group[T](groups: List[Int], list: List[T]): List[List[List[T]]] = groups match {
+    case Nil => List(Nil)
+    //for each combination of x elements in list, create groups of combinations
+    //in the (list - this combination) and prepend this combination to each
+    //resulting list of combinations.
+    //group(List(1, 2), List(1, 2, 3)) =
+    // 1. combinations(1, List(1, 2, 3)) = List(List(1), List(2), List(3))
+    //   a) flatMap(List(1) => group(List(2), List(2, 3))
+    //      1. combinations(2, List(2, 3)) = List(List(2, 3))
+    //          a) flatMap(List(2, 3) => List(2, 3) :: Nil)
+    //      1-. List(List(2, 3) :: Nil)
+    //   a-) List(1) :: List(2, 3) :: Nil
+    //   b) flatMap(List(2) => group(List(2), List(1, 3))
+    //      1. combinations(2, List(1, 3)) = List(List(1, 3))
+    //          a) flatMap(List(1, 3) => List(1, 3) :: Nil)
+    //      1-. List(List(1, 3) :: Nil)
+    //   b-) List(2) :: List(1, 3) :: Nil
+    //   c) flatMap(List(3) => group(List(2), List(1, 2))
+    //      1. combinations(2, List(1, 2)) = List(List(1, 2))
+    //          a) flatMap(List(1, 2) => List(1, 2) :: Nil)
+    //      1-. List(List(1, 2) :: Nil)
+    //   c-) List(3) :: List(1, 2) :: Nil
+    // 1-. List(`a-)`, `b-)`, `c-)`)
+    // FAKIN RAGE!!!
+    case x :: xs => combinations(x, list).flatMap(comb => group(xs, (list -- comb)).map(rest => comb :: rest))
   }
 
+// (**) Sorting a list of lists according to length of sublists.
+//     a) We suppose that a list contains elements that are lists themselves.
+//     The objective is to sort the elements of the list according to their
+//     length. E.g. short lists first, longer lists later, or vice versa.
+//     scala> lsort(List(List('a, 'b, 'c), List('d, 'e), List('f, 'g, 'h), List('d, 'e), List('i, 'j, 'k, 'l), List('m, 'n), List('o)))
+//     res0: List[List[Symbol]] = List(List('o), List('d, 'e), List('d, 'e), List('m, 'n), List('a, 'b, 'c), List('f, 'g, 'h), List('i, 'j, 'k, 'l))
 
-  def permutations[T](n: Int, list: List[T]) = list match {
-    case Nil => List(List())
-    case _ => list.flatMap((elem: T) => permutations[T](list.remove((a: T) => a == elem)) map ((b: List[T]) => elem :: b))
+//     b) Again, we suppose that a list contains elements that are lists
+//     themselves. But this time the objective is to sort the elements
+//     according to their length frequency; i.e. in the default, sorting is
+//     done ascendingly, lists with rare lengths are placed, others with a more
+//     frequent length come later.
+//     scala> lsortFreq(List(List('a, 'b, 'c), List('d, 'e), List('f, 'g, 'h), List('d, 'e), List('i, 'j, 'k, 'l), List('m, 'n), List('o)))
+//     res1: List[List[Symbol]] = List(List('i, 'j, 'k, 'l), List('o), List('a, 'b, 'c), List('f, 'g, 'h), List('d, 'e), List('d, 'e), List('m, 'n))
+
+//     Note that in the above example, the first two lists in the result have
+//     length 4 and 1 and both lengths appear just once. The third and fourth
+//     lists have length 3 and there are two list of this length. Finally, the
+//     last three lists have length 2. This is the most frequent length.
+  def lsort[T](list: List[List[T]]): List[List[T]] = list.sort(_.length > _.length)
+  def lsortFreq[T](list: List[List[T]]): List[List[T]] = {
+    var freq = new mutable.HashMap[Int, Int]
+    list.foreach(ls => freq.put(ls.length, freq.getOrElse(ls.length, 0) + 1))
+    list.sort((a: List[T], b: List[T]) => freq.getOrElse(a.length, 0) < freq.getOrElse(b.length, 0))
   }
+
+//  def permutations[T](n: Int, list: List[T]): List[List[T]] = list match {
+//    case Nil => List(List())
+//    case _ => list.flatMap((elem: T) => permutations[T](list.remove((a: T) => a == elem)) map ((b: List[T]) => elem :: b))
+//  }
 }
